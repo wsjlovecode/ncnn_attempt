@@ -151,14 +151,9 @@ void resize_bilinear(const unsigned char* src, int srcw, int srch, int srcstride
         short* rows1p = rows1;
         unsigned char* Dp = dst + stride * (dy);
 
-#if _x86_INTRIN
         int nn = w >> 2;
-#else
-        int nn = 0;
-#endif
         int remain = w - (nn << 2);
 
-#if _x86_INTRIN
         __m128i _b0 = _mm_set1_epi32(b0);    // 需要修改，用set指令
         __m128i _b1 = _mm_set1_epi32(b1);    // 需要修改，用set指令
         __m128i _v2 = _mm_set1_epi32(2);
@@ -197,19 +192,15 @@ void resize_bilinear(const unsigned char* src, int srcw, int srch, int srcstride
             // 右移指令, 并且将int32转化成int8
             __m128i _acc16 = _mm_srli_epi32(_acc, 2);
             
-            int* buffer_acc = new int[4];
-            _mm_storer_ps(buffer_acc, _acc16);
-            for(size_t i = 0; i < 4; ++i){
-                *(buffer_acc + i) = *(buffer_acc + i) >> 24;
-                *(Dp + i) = *(buffer_acc + i);
-            }
-
+            *(Dp) = (unsigned char)_mm_extract_epi8(_acc16, 0);
+            *(Dp+1) = (unsigned char)_mm_extract_epi8(_acc16, 1);
+            *(Dp+2) = (unsigned char)_mm_extract_epi8(_acc16, 2);
+            *(Dp+3) = (unsigned char)_mm_extract_epi8(_acc16, 3);
 
             Dp += 4;
             rows0p += 4;
             rows1p += 4;
         }
-#endif
 
         for(; remain; --remain)
         {
