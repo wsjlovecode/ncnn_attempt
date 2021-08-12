@@ -230,10 +230,10 @@ void resize_bilinear_c1(const unsigned char* src, int srcw, int srch, int srcstr
             // __m128i rows1p_0_unpack = _mm_unpacklo_epi32(_mm_srli_epi64(_rows1p_0_sr4_mb1, 32), _mm_srli_epi64(_rows1p_1_sr4_mb1, 32));
             // __m128i rows0p_1_unpack = _mm_unpackhi_epi32(_mm_srli_epi64(_rows0p_0_sr4_mb0, 32), _mm_srli_epi64(_rows0p_1_sr4_mb0, 32));
             // __m128i rows1p_1_unpack = _mm_unpackhi_epi32(_mm_srli_epi64(_rows1p_0_sr4_mb1, 32), _mm_srli_epi64(_rows1p_1_sr4_mb1, 32));
-	    __m128i rows0p_0_unpack = _mm_unpacklo_epi32(_rows0p_0_sr4_mb0, _rows0p_1_sr4_mb0);
-	    __m128i rows1p_0_unpack = _mm_unpacklo_epi32(_rows1p_0_sr4_mb1, _rows1p_1_sr4_mb1);
-	    __m128i rows0p_1_unpack = _mm_unpackhi_epi32(_rows0p_0_sr4_mb0, _rows0p_1_sr4_mb0);
-	    __m128i rows1p_1_unpack = _mm_unpackhi_epi32(_rows1p_0_sr4_mb1, _rows1p_1_sr4_mb1);
+	        __m128i rows0p_0_unpack = _mm_unpacklo_epi32(_rows0p_0_sr4_mb0, _rows0p_1_sr4_mb0);
+	        __m128i rows1p_0_unpack = _mm_unpacklo_epi32(_rows1p_0_sr4_mb1, _rows1p_1_sr4_mb1);
+	        __m128i rows0p_1_unpack = _mm_unpackhi_epi32(_rows0p_0_sr4_mb0, _rows0p_1_sr4_mb0);
+	        __m128i rows1p_1_unpack = _mm_unpackhi_epi32(_rows1p_0_sr4_mb1, _rows1p_1_sr4_mb1);
             __m128i rows0p_pack = _mm_unpacklo_epi64(rows0p_0_unpack, rows0p_1_unpack);
             __m128i rows1p_pack = _mm_unpacklo_epi64(rows1p_0_unpack, rows1p_1_unpack);
             __m128i _acc = _v2;
@@ -376,31 +376,20 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 sx = xofs[dx];
 
                 const unsigned char* S1p = S1 + sx;
-#if __ARM_NEON
-                int16x4_t _a0a1XX = vld1_s16(ialphap);
-                int16x4_t _a0a0a1a1 = vzip_s16(_a0a1XX, _a0a1XX).val[0];
-                uint8x8_t _S1 = uint8x8_t();
-
-                _S1 = vld1_lane_u8(S1p, _S1, 0);
-                _S1 = vld1_lane_u8(S1p + 1, _S1, 1);
-                _S1 = vld1_lane_u8(S1p + 2, _S1, 2);
-                _S1 = vld1_lane_u8(S1p + 3, _S1, 3);
-
-                int16x8_t _S116 = vreinterpretq_s16_u16(vmovl_u8(_S1));
-                int16x4_t _S1lowhigh = vget_low_s16(_S116);
-                int32x4_t _S1ma0a1 = vmull_s16(_S1lowhigh, _a0a0a1a1);
-                int32x2_t _rows1low = vadd_s32(vget_low_s32(_S1ma0a1), vget_high_s32(_S1ma0a1));
-                int32x4_t _rows1 = vcombine_s32(_rows1low, vget_high_s32(_S1ma0a1));
-                int16x4_t _rows1_sr4 = vshrn_n_s32(_rows1, 4);
-                vst1_s16(rows1p, _rows1_sr4);
-#else
-                short a0 = ialphap[0];
-                short a1 = ialphap[1];
-
-                rows1p[0] = (S1p[0] * a0 + S1p[2] * a1) >> 4;
-                rows1p[1] = (S1p[1] * a0 + S1p[3] * a1) >> 4;
-#endif // __ARM_NEON
-
+                __m128i _a0a0 = _mm_set_epi32(0 (int)*(ialphap), 0, (int)*(ialphap));
+                __m128i _a1a1 = _mm_set_epi32(0, (int)*(ialphap+1), 0, (int)*(ialphap+1));
+                __m128i _S1_0 = _mm_set_epi32(0, (int)*(S1p+1), 0, (int)*(S1p));
+                __m128i _S1_1 = _mm_set_epi32(0, (int)*(S1p+3), 0, (int)*(S1p+2))
+                // multiply and shift code
+                __m128i _S1ma0a1_0 = _mm_mul_epu32(_S1_0, _a0a0);
+                __m128i _S1ma0a1_1 = _mm_mul_epu32(_S1_1, _a1a1);
+                __m128i _S1ma0a1_add = _mm_add_epi32(_S1ma0a1_0, _S1ma0a1_1);
+                __m128i _rows1_sr4 = _mm_srli_epi32(_S1ma0a1_add, 4);
+                // store code
+                int* temp_sr4 = (int*)&_rows1_sr4;
+                rows1p[0] = (short)(*temp_sr4);
+                rows1p[1] = (short)(*temp_sr4);
+                
                 ialphap += 2;
                 rows1p += 2;
             }
