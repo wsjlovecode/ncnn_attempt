@@ -376,10 +376,10 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 sx = xofs[dx];
 
                 const unsigned char* S1p = S1 + sx;
-                __m128i _a0a0 = _mm_set_epi32(0 (int)*(ialphap), 0, (int)*(ialphap));
-                __m128i _a1a1 = _mm_set_epi32(0, (int)*(ialphap+1), 0, (int)*(ialphap+1));
-                __m128i _S1_0 = _mm_set_epi32(0, (int)*(S1p+1), 0, (int)*(S1p));
-                __m128i _S1_1 = _mm_set_epi32(0, (int)*(S1p+3), 0, (int)*(S1p+2))
+                __m128i _a0a0 = _mm_set_epi32(0 (int)(*(ialphap)), 0, (int)(*(ialphap)));
+                __m128i _a1a1 = _mm_set_epi32(0, (int)(*(ialphap+1)), 0, (int)(*(ialphap+1)));
+                __m128i _S1_0 = _mm_set_epi32(0, (int)*((S1p+1)), 0, (int)(*(S1p)));
+                __m128i _S1_1 = _mm_set_epi32(0, (int)(*(S1p+3)), 0, (int)(*(S1p+2)));
                 // multiply and shift code
                 __m128i _S1ma0a1_0 = _mm_mul_epu32(_S1_0, _a0a0);
                 __m128i _S1ma0a1_1 = _mm_mul_epu32(_S1_1, _a1a1);
@@ -387,8 +387,8 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 __m128i _rows1_sr4 = _mm_srli_epi32(_S1ma0a1_add, 4);
                 // store code
                 int* temp_sr4 = (int*)&_rows1_sr4;
-                rows1p[0] = (short)(*temp_sr4);
-                rows1p[1] = (short)(*temp_sr4);
+                rows1p[0] = (short)(*(temp_sr4));
+                rows1p[1] = (short)(*(temp_sr4+2));
                 
                 ialphap += 2;
                 rows1p += 2;
