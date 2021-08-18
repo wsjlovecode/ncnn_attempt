@@ -442,15 +442,15 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
         prev_sy1 = sy;
 
         // vresize
-        short b0 = ibeta[0];
-        short b1 = ibeta[1];
+        int b0 = (int)ibeta[0];
+        int b1 = (int)ibeta[1];
 
         short* rows0p = rows0;
         short* rows1p = rows1;
         unsigned char* Dp = dst + stride * (dy);
 
-        int nn = w >> 2;
-        int remain = w - (nn << 2);
+        int nn = (w * 2) >> 2;
+        int remain = (w * 2) - (nn << 2);
 
         __m128i _b0 = _mm_set1_epi32(b0);
         __m128i _b1 = _mm_set1_epi32(b1);
@@ -614,30 +614,17 @@ void resize_bilinear_c3(const unsigned char* src, int srcw, int srch, int srcstr
                 short a1 = ialphap[1];
 
                 const unsigned char* S1p = S1 + sx;
-#if __ARM_NEON
-                int16x4_t _a0 = vdup_n_s16(a0);
-                int16x4_t _a1 = vdup_n_s16(a1);
-                uint8x8_t _S1 = uint8x8_t();
+                
+                __m128i _S1 = _mm_set_epi16(0, 0, *(S1p+5), *(S1p+4), *(S1p+3), *(S1p+2), *(S1p+1), *(S1p));
+                __m128i _a0a1 = _mm_set_epi16(0, 0, a1, a0, a1, a0, a1, a0);
 
-                _S1 = vld1_lane_u8(S1p, _S1, 0);
-                _S1 = vld1_lane_u8(S1p + 1, _S1, 1);
-                _S1 = vld1_lane_u8(S1p + 2, _S1, 2);
-                _S1 = vld1_lane_u8(S1p + 3, _S1, 3);
-                _S1 = vld1_lane_u8(S1p + 4, _S1, 4);
-                _S1 = vld1_lane_u8(S1p + 5, _S1, 5);
+                __m128i _rows1 = _mm_madd_epi16(_S1, _a0a1);
+                __m128i _rows1_sr4 = _mm_srli_epi32(_rows1, 4);
 
-                int16x8_t _S116 = vreinterpretq_s16_u16(vmovl_u8(_S1));
-                int16x4_t _S1low = vget_low_s16(_S116);
-                int16x4_t _S1high = vext_s16(_S1low, vget_high_s16(_S116), 3);
-                int32x4_t _rows1 = vmull_s16(_S1low, _a0);
-                _rows1 = vmlal_s16(_rows1, _S1high, _a1);
-                int16x4_t _rows1_sr4 = vshrn_n_s32(_rows1, 4);
-                vst1_s16(rows1p, _rows1_sr4);
-#else
-                rows1p[0] = (S1p[0] * a0 + S1p[3] * a1) >> 4;
-                rows1p[1] = (S1p[1] * a0 + S1p[4] * a1) >> 4;
-                rows1p[2] = (S1p[2] * a0 + S1p[5] * a1) >> 4;
-#endif // __ARM_NEON
+                int* temp_sr4 = (int*)&_rows1_sr4;
+                rows1p[0] = (short)*(temp_sr4);
+                rows1p[1] = (short)*(temp_sr4+1);
+                rows1p[2] = (short)*(temp_sr4+2);
 
                 ialphap += 2;
                 rows1p += 3;
