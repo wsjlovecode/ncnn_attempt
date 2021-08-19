@@ -615,7 +615,7 @@ void resize_bilinear_c3(const unsigned char* src, int srcw, int srch, int srcstr
 
                 const unsigned char* S1p = S1 + sx;
                 
-                __m128i _S1 = _mm_set_epi16(0, 0, *(S1p+5), *(S1p+4), *(S1p+3), *(S1p+2), *(S1p+1), *(S1p));
+                __m128i _S1 = _mm_set_epi16(0, 0, *(S1p+5), *(S1p+2), *(S1p+4), *(S1p+1), *(S1p+3), *(S1p));
                 __m128i _a0a1 = _mm_set_epi16(0, 0, a1, a0, a1, a0, a1, a0);
 
                 __m128i _rows1 = _mm_madd_epi16(_S1, _a0a1);
@@ -647,48 +647,24 @@ void resize_bilinear_c3(const unsigned char* src, int srcw, int srch, int srcstr
 
                 const unsigned char* S0p = S0 + sx;
                 const unsigned char* S1p = S1 + sx;
-#if __ARM_NEON
-                int16x4_t _a0 = vdup_n_s16(a0);
-                int16x4_t _a1 = vdup_n_s16(a1);
-                uint8x8_t _S0 = uint8x8_t();
-                uint8x8_t _S1 = uint8x8_t();
 
-                _S0 = vld1_lane_u8(S0p, _S0, 0);
-                _S0 = vld1_lane_u8(S0p + 1, _S0, 1);
-                _S0 = vld1_lane_u8(S0p + 2, _S0, 2);
-                _S0 = vld1_lane_u8(S0p + 3, _S0, 3);
-                _S0 = vld1_lane_u8(S0p + 4, _S0, 4);
-                _S0 = vld1_lane_u8(S0p + 5, _S0, 5);
+                __m128i _S0 = _mm_set_epi16(0, 0, *(S0p+5), *(S0p+2), *(S0p+4), *(S0p+1), *(S0p+3), *(S0p));
+                __m128i _S1 = _mm_set_epi16(0, 0, *(S1p+5), *(S1p+2), *(S1p+4), *(S1p+1), *(S1p+3), *(S1p));
+                __m128i _a0a1 = _mm_set_epi16(0, 0, a1, a0, a1, a0, a1, a0);
 
-                _S1 = vld1_lane_u8(S1p, _S1, 0);
-                _S1 = vld1_lane_u8(S1p + 1, _S1, 1);
-                _S1 = vld1_lane_u8(S1p + 2, _S1, 2);
-                _S1 = vld1_lane_u8(S1p + 3, _S1, 3);
-                _S1 = vld1_lane_u8(S1p + 4, _S1, 4);
-                _S1 = vld1_lane_u8(S1p + 5, _S1, 5);
+                __m128i _rows0 = _mm_madd_epi16(_S0, _a0a1);
+                __m128i _rows1 = _mm_madd_epi16(_S1, _a0a1);
+                __m128i _rows0_sr4 = _mm_srli_epi32(_rows0, 4);
+                __m128i _rows1_sr4 = _mm_srli_epi32(_rows1, 4);
 
-                int16x8_t _S016 = vreinterpretq_s16_u16(vmovl_u8(_S0));
-                int16x8_t _S116 = vreinterpretq_s16_u16(vmovl_u8(_S1));
-                int16x4_t _S0low = vget_low_s16(_S016);
-                int16x4_t _S1low = vget_low_s16(_S116);
-                int16x4_t _S0high = vext_s16(_S0low, vget_high_s16(_S016), 3);
-                int16x4_t _S1high = vext_s16(_S1low, vget_high_s16(_S116), 3);
-                int32x4_t _rows0 = vmull_s16(_S0low, _a0);
-                int32x4_t _rows1 = vmull_s16(_S1low, _a0);
-                _rows0 = vmlal_s16(_rows0, _S0high, _a1);
-                _rows1 = vmlal_s16(_rows1, _S1high, _a1);
-                int16x4_t _rows0_sr4 = vshrn_n_s32(_rows0, 4);
-                int16x4_t _rows1_sr4 = vshrn_n_s32(_rows1, 4);
-                vst1_s16(rows0p, _rows0_sr4);
-                vst1_s16(rows1p, _rows1_sr4);
-#else
-                rows0p[0] = (S0p[0] * a0 + S0p[3] * a1) >> 4;
-                rows0p[1] = (S0p[1] * a0 + S0p[4] * a1) >> 4;
-                rows0p[2] = (S0p[2] * a0 + S0p[5] * a1) >> 4;
-                rows1p[0] = (S1p[0] * a0 + S1p[3] * a1) >> 4;
-                rows1p[1] = (S1p[1] * a0 + S1p[4] * a1) >> 4;
-                rows1p[2] = (S1p[2] * a0 + S1p[5] * a1) >> 4;
-#endif // __ARM_NEON
+                int* temp0_sr4 = (int*)&_rows0_sr4;
+                int* temp1_sr4 = (int*)&_rows1_sr4;
+                rows0p[0] = (short)*(temp0_sr4);
+                rows1p[0] = (short)*(temp1_sr4);
+                rows0p[1] = (short)*(temp0_sr4+1);
+                rows1p[1] = (short)*(temp1_sr4+1);
+                rows0p[2] = (short)*(temp0_sr4+2);
+                rows1p[2] = (short)*(temp1_sr4+2);
 
                 ialphap += 2;
                 rows0p += 3;
