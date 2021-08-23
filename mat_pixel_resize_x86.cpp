@@ -921,98 +921,48 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
         short* rows1p = rows1;
         unsigned char* Dp = dst + stride * (dy);
 
-#if __ARM_NEON
-        int nn = (w * 4) >> 3;
-#else
-        int nn = 0;
-#endif
-        int remain = (w * 4) - (nn << 3);
+        int nn = (w * 4) >> 2;
+        int remain = (w * 4) - (nn << 2);
 
-#if __ARM_NEON
-#if __aarch64__
-        int16x4_t _b0 = vdup_n_s16(b0);
-        int16x4_t _b1 = vdup_n_s16(b1);
-        int32x4_t _v2 = vdupq_n_s32(2);
-        for (; nn > 0; nn--)
+        __m128i _b0 = _mm_set1_epi32(b0);
+        __m128i _b1 = _mm_set1_epi32(b1);
+        __m128i _v2 = _mm_set1_epi32(2);
+        for (; nn > 0; --nn)
         {
-            int16x4_t _rows0p_sr4 = vld1_s16(rows0p);
-            int16x4_t _rows1p_sr4 = vld1_s16(rows1p);
-            int16x4_t _rows0p_1_sr4 = vld1_s16(rows0p + 4);
-            int16x4_t _rows1p_1_sr4 = vld1_s16(rows1p + 4);
+            __m128i rows0p_0_sr4 = _mm_set_epi32(0, (int)*(rows0p+2), 0, (int)*(rows0p));
+            __m128i rows0p_1_sr4 = _mm_set_epi32(0, (int)*(rows0p+3), 0, (int)*(rows0p+1));
+            __m128i rows1p_0_sr4 = _mm_set_epi32(0, (int)*(rows1p+2), 0, (int)*(rows1p));
+            __m128i rows1p_1_sr4 = _mm_set_epi32(0, (int)*(rows1p+3), 0, (int)*(rows1p+1));
 
-            int32x4_t _rows0p_sr4_mb0 = vmull_s16(_rows0p_sr4, _b0);
-            int32x4_t _rows1p_sr4_mb1 = vmull_s16(_rows1p_sr4, _b1);
-            int32x4_t _rows0p_1_sr4_mb0 = vmull_s16(_rows0p_1_sr4, _b0);
-            int32x4_t _rows1p_1_sr4_mb1 = vmull_s16(_rows1p_1_sr4, _b1);
+            __m128i _rows0p_0_sr4_mb0 = _mm_mul_epu32(rows0p_0_sr4, _b0);
+            __m128i _rows0p_1_sr4_mb0 = _mm_mul_epu32(rows0p_1_sr4, _b0);
+            __m128i _rows1p_0_sr4_mb1 = _mm_mul_epu32(rows1p_0_sr4, _b1);
+            __m128i _rows1p_1_sr4_mb1 = _mm_mul_epu32(rows1p_1_sr4, _b1);
 
-            int32x4_t _acc = _v2;
-            _acc = vsraq_n_s32(_acc, _rows0p_sr4_mb0, 16);
-            _acc = vsraq_n_s32(_acc, _rows1p_sr4_mb1, 16);
+            __m128i rows0p_0_unpack = _mm_unpacklo_epi32(_rows0p_0_sr4_mb0, _rows0p_1_sr4_mb0);
+            __m128i rows1p_0_unpack = _mm_unpacklo_epi32(_rows1p_0_sr4_mb1, _rows1p_1_sr4_mb1);
+            __m128i rows0p_1_unpack = _mm_unpackhi_epi32(_rows0p_0_sr4_mb0, _rows0p_1_sr4_mb0);
+            __m128i rows1p_1_unpack = _mm_unpackhi_epi32(_rows1p_0_sr4_mb1, _rows1p_1_sr4_mb1);
+            __m128i rows0p_pack = _mm_unpacklo_epi64(rows0p_0_unpack, rows0p_1_unpack);
+            __m128i rows1p_pack = _mm_unpacklo_epi64(rows1p_0_unpack, rows1p_1_unpack);
+            __m128i _acc = _v2;
+            _acc = _mm_add_epi32(rows0p_pack, _acc);
+            _acc = _mm_add_epi32(rows1p_pack, _acc);
 
-            int32x4_t _acc_1 = _v2;
-            _acc_1 = vsraq_n_s32(_acc_1, _rows0p_1_sr4_mb0, 16);
-            _acc_1 = vsraq_n_s32(_acc_1, _rows1p_1_sr4_mb1, 16);
+             // shift right
+            __m128i _acc16 = _mm_srli_epi32(_acc, 2);
+            
+            int* buffer_acc = (int*)&_acc16;
+	        for(size_t i = 0; i < 4; ++i){
+		        // std::cout << buffer_acc[i] << std::endl;
+	    	    buffer_acc[i] = (unsigned char)(buffer_acc[i] >> 16);
+		        *(Dp+i) = buffer_acc[i];
+	        }
 
-            int16x4_t _acc16 = vshrn_n_s32(_acc, 2);
-            int16x4_t _acc16_1 = vshrn_n_s32(_acc_1, 2);
-
-            uint8x8_t _D = vqmovun_s16(vcombine_s16(_acc16, _acc16_1));
-
-            vst1_u8(Dp, _D);
-
-            Dp += 8;
-            rows0p += 8;
-            rows1p += 8;
+            Dp += 4;
+            rows0p += 4;
+            rows1p += 4;
         }
-#else
-        if (nn > 0)
-        {
-            asm volatile(
-                "vdup.s16   d16, %8         \n"
-                "mov        r4, #2          \n"
-                "vdup.s16   d17, %9         \n"
-                "vdup.s32   q12, r4         \n"
-                "pld        [%0, #128]      \n"
-                "vld1.s16   {d2-d3}, [%0 :128]!\n"
-                "pld        [%1, #128]      \n"
-                "vld1.s16   {d6-d7}, [%1 :128]!\n"
-                "0:                         \n"
-                "vmull.s16  q0, d2, d16     \n"
-                "vmull.s16  q1, d3, d16     \n"
-                "vorr.s32   q10, q12, q12   \n"
-                "vorr.s32   q11, q12, q12   \n"
-                "vmull.s16  q2, d6, d17     \n"
-                "vmull.s16  q3, d7, d17     \n"
-                "vsra.s32   q10, q0, #16    \n"
-                "vsra.s32   q11, q1, #16    \n"
-                "pld        [%0, #128]      \n"
-                "vld1.s16   {d2-d3}, [%0 :128]!\n"
-                "vsra.s32   q10, q2, #16    \n"
-                "vsra.s32   q11, q3, #16    \n"
-                "pld        [%1, #128]      \n"
-                "vld1.s16   {d6-d7}, [%1 :128]!\n"
-                "vshrn.s32  d20, q10, #2    \n"
-                "vshrn.s32  d21, q11, #2    \n"
-                "vqmovun.s16 d20, q10        \n"
-                "vst1.8     {d20}, [%2]!    \n"
-                "subs       %3, #1          \n"
-                "bne        0b              \n"
-                "sub        %0, #16         \n"
-                "sub        %1, #16         \n"
-                : "=r"(rows0p), // %0
-                "=r"(rows1p), // %1
-                "=r"(Dp),     // %2
-                "=r"(nn)      // %3
-                : "0"(rows0p),
-                "1"(rows1p),
-                "2"(Dp),
-                "3"(nn),
-                "r"(b0), // %8
-                "r"(b1)  // %9
-                : "cc", "memory", "r4", "q0", "q1", "q2", "q3", "q8", "q9", "q10", "q11", "q12");
-        }
-#endif // __aarch64__
-#endif // __ARM_NEON
         for (; remain; --remain)
         {
             //             D[x] = (rows0[x]*b0 + rows1[x]*b1) >> INTER_RESIZE_COEF_BITS;
@@ -1021,7 +971,7 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
 
         ibeta += 2;
     }
-
+    
     delete[] buf;
 }
 
