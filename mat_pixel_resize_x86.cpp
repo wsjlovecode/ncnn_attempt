@@ -376,9 +376,9 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 sx = xofs[dx];
 
                 const unsigned char* S1p = S1 + sx;
-                __m128i _a0a0 = _mm_set_epi32(0 (int)(*(ialphap)), 0, (int)(*(ialphap)));
+                __m128i _a0a0 = _mm_set_epi32(0, (int)(*(ialphap)), 0, (int)(*(ialphap)));
                 __m128i _a1a1 = _mm_set_epi32(0, (int)(*(ialphap+1)), 0, (int)(*(ialphap+1)));
-                __m128i _S1_0 = _mm_set_epi32(0, (int)*((S1p+1)), 0, (int)(*(S1p)));
+                __m128i _S1_0 = _mm_set_epi32(0, (int)(*(S1p+1)), 0, (int)(*(S1p)));
                 __m128i _S1_1 = _mm_set_epi32(0, (int)(*(S1p+3)), 0, (int)(*(S1p+2)));
                 // multiply and shift code
                 __m128i _S1ma0a1_0 = _mm_mul_epu32(_S1_0, _a0a0);
@@ -847,7 +847,7 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
                 short a1 = ialphap[1];
 
                 const unsigned char* S1p = S1 + sx;
-                
+
                 __m128i _a0a1 = _mm_set_epi16(a1, a0, a1, a0, a1, a0, a1, a0);
                 __m128i _S1 = _mm_set_epi16((short)*(S1p + 7), (short)*(S1p + 3), (short)*(S1p + 6), (short)*(S1p + 2), 
                                             (short)*(S1p + 5), (short)*(S1p + 1), (short)*(S1p + 4), (short)*(S1p));
@@ -861,7 +861,8 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
                 rows1p[2] = (short)*(temp_sr4+2);
                 rows1p[3] = (short)*(temp_sr4+3);
 
-                ialpha += 2;
+		// printf("%d %d %d %d\n", rows1p[0], rows1p[1], rows1p[2], rows1p[3]);
+                ialphap += 2;
                 rows1p += 4;
             }
         }
@@ -905,6 +906,16 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
                 rows0p[3] = (short)*(temp0_sr4 + 3);
                 rows1p[3] = (short)*(temp1_sr4 + 3);
 
+                /* rows0p[0] = (S0p[0] * a0 + S0p[4] * a1) >> 4;
+                rows0p[1] = (S0p[1] * a0 + S0p[5] * a1) >> 4;
+                rows0p[2] = (S0p[2] * a0 + S0p[6] * a1) >> 4;
+                rows0p[3] = (S0p[3] * a0 + S0p[7] * a1) >> 4;
+                rows1p[0] = (S1p[0] * a0 + S1p[4] * a1) >> 4;
+                rows1p[1] = (S1p[1] * a0 + S1p[5] * a1) >> 4;
+                rows1p[2] = (S1p[2] * a0 + S1p[6] * a1) >> 4;
+                rows1p[3] = (S1p[3] * a0 + S1p[7] * a1) >> 4; */
+
+		// printf("%d %d %d %d\n", rows1p[0], rows1p[1], rows1p[2], rows1p[3]);
                 ialphap += 2;
                 rows0p += 4;
                 rows1p += 4;
