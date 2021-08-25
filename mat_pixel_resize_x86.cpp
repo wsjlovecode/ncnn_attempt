@@ -883,7 +883,7 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
                 const unsigned char* S0p = S0 + sx;
                 const unsigned char* S1p = S1 + sx;
 
-                __m128i _a0a1 = _mm_set_epi32(a1, a0, a1, a0, a1, a0, a1, a0);
+                __m128i _a0a1 = _mm_set_epi16(a1, a0, a1, a0, a1, a0, a1, a0);
                 __m128i _S0 = _mm_set_epi16((short)*(S0p + 7), (short)*(S0p + 3), (short)*(S0p + 6), (short)*(S0p + 2),
                                             (short)*(S0p + 5), (short)*(S0p + 1), (short)*(S0p + 4), (short)*(S0p));
                 __m128i _S1 = _mm_set_epi16((short)*(S1p + 7), (short)*(S1p + 3), (short)*(S1p + 6), (short)*(S1p + 2),
