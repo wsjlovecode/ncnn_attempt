@@ -272,7 +272,7 @@ void resize_bilinear_c1(const unsigned char* src, int srcw, int srch, int srcstr
         __m128i _v2 = _mm_set1_epi32(2);
         for(; nn > 0; nn--)
         {
-            __m128i _rows0s1 = _mm_set_epi16(*(rows1p+3), *(rows1p+2), *(rows1p+1), *(rows1p), *(rows0p+3), *(rows0p+2), *(rows0p+1), *(rows0p));
+            __m128i _rows0s1 = _mm_set_epi16(*(rows1p+3), *(rows1p+1), *(rows1p+2), *(rows1p), *(rows0p+3), *(rows0p+1), *(rows0p+2), *(rows0p));
             __m128i _rows0p_sr4 = _mm_unpacklo_epi16(_rows0s1, _zeros);
             __m128i _rows1p_sr4 = _mm_unpackhi_epi16(_rows0s1, _zeros);
 
@@ -281,10 +281,19 @@ void resize_bilinear_c1(const unsigned char* src, int srcw, int srch, int srcstr
             __m128i _rows1p_mblo_sr4 = _mm_mullo_epi16(_rows1p_sr4, _b1);
             __m128i _rows1p_mbhi_sr4 = _mm_mulhi_epi16(_rows1p_sr4, _b1);
 
-	        __m128i rows0p_unpack = _mm_unpacklo_epi16(_rows0p_mblo_sr4, _rows0p_mbhi_sr4);
-            __m128i rows1p_unpack = _mm_unpacklo_epi16(_rows1p_mblo_sr4, _rows1p_mbhi_sr4);
-            __m128i rows0p_shr = _mm_srli_epi32(rows0p_unpack, 16);
-            __m128i rows1p_shr = _mm_srli_epi32(rows1p_unpack, 16);
+	        __m128i rows0p_0_unpack = _mm_unpacklo_epi16(_rows0p_mblo_sr4, _rows0p_mbhi_sr4);
+            __m128i rows0p_1_unpack = _mm_unpackhi_epi16(_rows0p_mblo_sr4, _rows0p_mbhi_sr4);
+            __m128i rows1p_0_unpack = _mm_unpacklo_epi16(_rows1p_mblo_sr4, _rows1p_mbhi_sr4);
+            __m128i rows1p_1_unpack = _mm_unpackhi_epi16(_rows1p_mblo_sr4, _rows1p_mbhi_sr4);
+            __m128i rows0p_0_unpack2 = _mm_unpacklo_epi32(rows0p_0_unpack, rows0p_1_unpack);
+            __m128i rows0p_1_unpack2 = _mm_unpackhi_epi32(rows0p_0_unpack, rows0p_1_unpack);
+            __m128i rows1p_0_unpack2 = _mm_unpacklo_epi32(rows1p_0_unpack, rows1p_1_unpack);
+            __m128i rows1p_1_unpack2 = _mm_unpackhi_epi32(rows1p_0_unpack, rows1p_1_unpack);
+            __m128i rows0p_01comb = _mm_unpacklo_epi64(rows0p_0_unpack2, rows0p_1_unpack2);
+            __m128i rows1p_01comb = _mm_unpacklo_epi64(rows1p_0_unpack2, rows1p_1_unpack2);
+
+            __m128i rows0p_shr = _mm_srli_epi32(rows0p_01comb, 16);
+            __m128i rows1p_shr = _mm_srli_epi32(rows1p_01comb, 16);
             __m128i _acc = _v2;
             _acc = _mm_add_epi32(rows0p_shr, _acc);
             _acc = _mm_add_epi32(rows1p_shr, _acc);
