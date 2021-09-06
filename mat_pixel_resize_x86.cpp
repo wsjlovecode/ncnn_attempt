@@ -190,8 +190,72 @@ void resize_bilinear_c1(const unsigned char* src, int srcw, int srch, int srcstr
         prev_sy1 = sy;
 
         // vresize
-        int b0 = (int)ibeta[0];         // 使其成为32bit数
-        int b1 = (int)ibeta[1];
+        // int b0 = (int)ibeta[0];         // 使其成为32bit数
+        // int b1 = (int)ibeta[1];
+
+        // short* rows0p = rows0;
+        // short* rows1p = rows1;
+        // unsigned char* Dp = dst + stride * (dy);
+
+
+        // int nn = w >> 2;
+        // int remain = w - (nn << 2);
+
+        // __m128i _b0 = _mm_set1_epi32(b0);    // 需要修改，用set指令
+        // __m128i _b1 = _mm_set1_epi32(b1);    // 需要修改，用set指令
+        // __m128i _v2 = _mm_set1_epi32(2);
+        // for(; nn > 0; nn--)
+        // {
+        //     //__mm128i _rows0p_sr4 = _mm_loadl_epi64(rows0p);
+        //     //__mm128i _rows1p_sr4 = _mm_loadl_epi64(rows1p);
+        //     __m128i rows0p_0_sr4 = _mm_set_epi32(0, (int)*(rows0p+2), 0, (int)*(rows0p));
+        //     __m128i rows0p_1_sr4 = _mm_set_epi32(0, (int)*(rows0p+3), 0, (int)*(rows0p+1));
+        //     __m128i rows1p_0_sr4 = _mm_set_epi32(0, (int)*(rows1p+2), 0, (int)*(rows1p));
+        //     __m128i rows1p_1_sr4 = _mm_set_epi32(0, (int)*(rows1p+3), 0, (int)*(rows1p+1));
+        //     // __mm128i _rows0p_1_sr4 = _mm_load_epi64(rows0p + 4);
+        //     // __mm128i _rows1p_1_sr4 = _mm_load_epi64(rows1p + 4);
+
+        //     __m128i _rows0p_0_sr4_mb0 = _mm_mul_epu32(rows0p_0_sr4, _b0);
+        //     __m128i _rows0p_1_sr4_mb0 = _mm_mul_epu32(rows0p_1_sr4, _b0);
+        //     __m128i _rows1p_0_sr4_mb1 = _mm_mul_epu32(rows1p_0_sr4, _b1);
+        //     __m128i _rows1p_1_sr4_mb1 = _mm_mul_epu32(rows1p_1_sr4, _b1);
+        //     // __mm128 _rows0p_1_sr4_mb0 = _mm_mullo_epi16(_rows0p_1_sr4, _b0);
+        //     // __mm128 _rows1p_1_sr4_mb1 = _mm_mullo_epi16(_rows1p_1_sr4, _b1);
+
+        //     // right shift & pack
+        //     // __m128i _acc = _v2;
+        //     // _acc = _mm_add_epi32(_mm_srli_epi32(_rows0p_0_sr4_mb0, 48), _acc);
+        //     // _acc = _mm_add_epi32(_mm_srli_epi32(_rows1p_sr4_mb1, 48), _acc); 
+        //     // __m128i rows0p_0_unpack = _mm_unpacklo_epi32(_mm_srli_epi64(_rows0p_0_sr4_mb0, 32), _mm_srli_epi64(_rows0p_1_sr4_mb0, 32));
+        //     // __m128i rows1p_0_unpack = _mm_unpacklo_epi32(_mm_srli_epi64(_rows1p_0_sr4_mb1, 32), _mm_srli_epi64(_rows1p_1_sr4_mb1, 32));
+        //     // __m128i rows0p_1_unpack = _mm_unpackhi_epi32(_mm_srli_epi64(_rows0p_0_sr4_mb0, 32), _mm_srli_epi64(_rows0p_1_sr4_mb0, 32));
+        //     // __m128i rows1p_1_unpack = _mm_unpackhi_epi32(_mm_srli_epi64(_rows1p_0_sr4_mb1, 32), _mm_srli_epi64(_rows1p_1_sr4_mb1, 32));
+	    //     __m128i rows0p_0_unpack = _mm_unpacklo_epi32(_rows0p_0_sr4_mb0, _rows0p_1_sr4_mb0);
+	    //     __m128i rows1p_0_unpack = _mm_unpacklo_epi32(_rows1p_0_sr4_mb1, _rows1p_1_sr4_mb1);
+	    //     __m128i rows0p_1_unpack = _mm_unpackhi_epi32(_rows0p_0_sr4_mb0, _rows0p_1_sr4_mb0);
+	    //     __m128i rows1p_1_unpack = _mm_unpackhi_epi32(_rows1p_0_sr4_mb1, _rows1p_1_sr4_mb1);
+        //     __m128i rows0p_pack = _mm_unpacklo_epi64(rows0p_0_unpack, rows0p_1_unpack);
+        //     __m128i rows1p_pack = _mm_unpacklo_epi64(rows1p_0_unpack, rows1p_1_unpack);
+        //     __m128i _acc = _v2;
+        //     _acc = _mm_add_epi32(rows0p_pack, _acc);
+        //     _acc = _mm_add_epi32(rows1p_pack, _acc);
+            
+        //     // 右移指令, 并且将int32转化成int8
+        //      __m128i _acc16 = _mm_srli_epi32(_acc, 2);
+            
+        //     int* buffer_acc = (int*)&_acc16;
+	    //     for(size_t i = 0; i < 4; ++i){
+		//         // std::cout << buffer_acc[i] << std::endl;
+	    // 	    buffer_acc[i] = (unsigned char)(buffer_acc[i] >> 16);
+		//         *(Dp+i) = buffer_acc[i];
+	    //     }
+
+
+        //     Dp += 4;
+        //     rows0p += 4;
+        //     rows1p += 4;
+        short b0 = ibeta[0];         
+        short b1 = ibeta[1];
 
         short* rows0p = rows0;
         short* rows1p = rows1;
@@ -201,44 +265,29 @@ void resize_bilinear_c1(const unsigned char* src, int srcw, int srch, int srcstr
         int nn = w >> 2;
         int remain = w - (nn << 2);
 
-        __m128i _b0 = _mm_set1_epi32(b0);    // 需要修改，用set指令
-        __m128i _b1 = _mm_set1_epi32(b1);    // 需要修改，用set指令
+        __m128i _b0b1 = _mm_set_epi16(b1, b1, b1, b1, b0, b0, b0, b0);
+        __m128i _zeros = _mm_setzero_si128();
+        __m128i _b0 = _mm_unpacklo_epi16(_b0b1, _zeros);
+        __m128i _b1 = _mm_unpackhi_epi32(_b0b1, _zeros);       
         __m128i _v2 = _mm_set1_epi32(2);
         for(; nn > 0; nn--)
         {
-            //__mm128i _rows0p_sr4 = _mm_loadl_epi64(rows0p);
-            //__mm128i _rows1p_sr4 = _mm_loadl_epi64(rows1p);
-            __m128i rows0p_0_sr4 = _mm_set_epi32(0, (int)*(rows0p+2), 0, (int)*(rows0p));
-            __m128i rows0p_1_sr4 = _mm_set_epi32(0, (int)*(rows0p+3), 0, (int)*(rows0p+1));
-            __m128i rows1p_0_sr4 = _mm_set_epi32(0, (int)*(rows1p+2), 0, (int)*(rows1p));
-            __m128i rows1p_1_sr4 = _mm_set_epi32(0, (int)*(rows1p+3), 0, (int)*(rows1p+1));
-            // __mm128i _rows0p_1_sr4 = _mm_load_epi64(rows0p + 4);
-            // __mm128i _rows1p_1_sr4 = _mm_load_epi64(rows1p + 4);
+            __m128i _rows0s1 = _mm_set_epi16(*(rows1p+3), *(rows1p+2), *(rows1p+1), *(rows1p), *(rows0p+3), *(rows0p+2), *(rows0p+1), *(rows0p));
+            __m128i _rows0p_sr4 = _mm_unpacklo_epi16(_rows0s1, _zeros);
+            __m128i _rows1p_sr4 = _mm_unpackhi_epi16(_rows0s1, _zeros);
 
-            __m128i _rows0p_0_sr4_mb0 = _mm_mul_epu32(rows0p_0_sr4, _b0);
-            __m128i _rows0p_1_sr4_mb0 = _mm_mul_epu32(rows0p_1_sr4, _b0);
-            __m128i _rows1p_0_sr4_mb1 = _mm_mul_epu32(rows1p_0_sr4, _b1);
-            __m128i _rows1p_1_sr4_mb1 = _mm_mul_epu32(rows1p_1_sr4, _b1);
-            // __mm128 _rows0p_1_sr4_mb0 = _mm_mullo_epi16(_rows0p_1_sr4, _b0);
-            // __mm128 _rows1p_1_sr4_mb1 = _mm_mullo_epi16(_rows1p_1_sr4, _b1);
+            __m128i _rows0p_mblo_sr4 = _mm_mullo_epi16(_rows0p_sr4, _b0);
+            __m128i _rows0p_mbhi_sr4 = _mm_mulhi_epi16(_rows0p_sr4, _b0);
+            __m128i _rows1p_mblo_sr4 = _mm_mullo_epi16(_rows1p_sr4, _b1);
+            __m128i _rows1p_mbhi_sr4 = _mm_mulhi_epi16(_rows1p_sr4, _b1);
 
-            // right shift & pack
-            // __m128i _acc = _v2;
-            // _acc = _mm_add_epi32(_mm_srli_epi32(_rows0p_0_sr4_mb0, 48), _acc);
-            // _acc = _mm_add_epi32(_mm_srli_epi32(_rows1p_sr4_mb1, 48), _acc); 
-            // __m128i rows0p_0_unpack = _mm_unpacklo_epi32(_mm_srli_epi64(_rows0p_0_sr4_mb0, 32), _mm_srli_epi64(_rows0p_1_sr4_mb0, 32));
-            // __m128i rows1p_0_unpack = _mm_unpacklo_epi32(_mm_srli_epi64(_rows1p_0_sr4_mb1, 32), _mm_srli_epi64(_rows1p_1_sr4_mb1, 32));
-            // __m128i rows0p_1_unpack = _mm_unpackhi_epi32(_mm_srli_epi64(_rows0p_0_sr4_mb0, 32), _mm_srli_epi64(_rows0p_1_sr4_mb0, 32));
-            // __m128i rows1p_1_unpack = _mm_unpackhi_epi32(_mm_srli_epi64(_rows1p_0_sr4_mb1, 32), _mm_srli_epi64(_rows1p_1_sr4_mb1, 32));
-	        __m128i rows0p_0_unpack = _mm_unpacklo_epi32(_rows0p_0_sr4_mb0, _rows0p_1_sr4_mb0);
-	        __m128i rows1p_0_unpack = _mm_unpacklo_epi32(_rows1p_0_sr4_mb1, _rows1p_1_sr4_mb1);
-	        __m128i rows0p_1_unpack = _mm_unpackhi_epi32(_rows0p_0_sr4_mb0, _rows0p_1_sr4_mb0);
-	        __m128i rows1p_1_unpack = _mm_unpackhi_epi32(_rows1p_0_sr4_mb1, _rows1p_1_sr4_mb1);
-            __m128i rows0p_pack = _mm_unpacklo_epi64(rows0p_0_unpack, rows0p_1_unpack);
-            __m128i rows1p_pack = _mm_unpacklo_epi64(rows1p_0_unpack, rows1p_1_unpack);
+	        __m128i rows0p_unpack = _mm_unpacklo_epi16(_rows0p_mblo_sr4, _rows0p_mbhi_sr4);
+            __m128i rows1p_unpack = _mm_unpacklo_epi16(_rows1p_mblo_sr4, _rows1p_mbhi_sr4);
+            __m128i rows0p_shr = _mm_srli_epi32(rows0p_unpack, 16);
+            __m128i rows1p_shr = _mm_srli_epi32(rows1p_unpack, 16);
             __m128i _acc = _v2;
-            _acc = _mm_add_epi32(rows0p_pack, _acc);
-            _acc = _mm_add_epi32(rows1p_pack, _acc);
+            _acc = _mm_add_epi32(rows0p_shr, _acc);
+            _acc = _mm_add_epi32(rows1p_shr, _acc);
             
             // 右移指令, 并且将int32转化成int8
              __m128i _acc16 = _mm_srli_epi32(_acc, 2);
@@ -246,10 +295,9 @@ void resize_bilinear_c1(const unsigned char* src, int srcw, int srch, int srcstr
             int* buffer_acc = (int*)&_acc16;
 	        for(size_t i = 0; i < 4; ++i){
 		        // std::cout << buffer_acc[i] << std::endl;
-	    	    buffer_acc[i] = (unsigned char)(buffer_acc[i] >> 16);
+	    	    buffer_acc[i] = (unsigned char)(buffer_acc[i]);
 		        *(Dp+i) = buffer_acc[i];
 	        }
-
 
             Dp += 4;
             rows0p += 4;
