@@ -268,7 +268,7 @@ void resize_bilinear_c1(const unsigned char* src, int srcw, int srch, int srcstr
         __m128i _b0b1 = _mm_set_epi16(b1, b1, b1, b1, b0, b0, b0, b0);
         __m128i _zeros = _mm_setzero_si128();
         __m128i _b0 = _mm_unpacklo_epi16(_b0b1, _zeros);
-        __m128i _b1 = _mm_unpackhi_epi32(_b0b1, _zeros);       
+        __m128i _b1 = _mm_unpackhi_epi16(_b0b1, _zeros);       
         __m128i _v2 = _mm_set1_epi32(2);
         for(; nn > 0; nn--)
         {
