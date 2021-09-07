@@ -433,7 +433,7 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 sx = xofs[dx];
 
                 const unsigned char* S1p = S1 + sx;
-                __m128i _S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 3), *(S1p + 1), *(S1p + 2), *(S1p));
+                __m128i _S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 3), *(S1p + 2), *(S1p + 1), *(S1p));
                 __m128i zeros = _mm_setzero_si128();
                 __m128i _a0a1 = _mm_set_epi16(0, 0, 0, 0, a1, a1, a0, a0);
                 __m128i _S116 = _mm_unpacklo_epi8(_S1, zeros);
@@ -448,7 +448,7 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 // store code
                 int* temp_sr4 = (int*)&_rows1_sr4;
                 rows1p[0] = (short)(*(temp_sr4));
-                rows1p[1] = (short)(*(temp_sr4+2));
+                rows1p[1] = (short)(*(temp_sr4+1));
                 
                 ialphap += 2;
                 rows1p += 2;
