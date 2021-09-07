@@ -431,18 +431,20 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
             for (int dx = 0; dx < w; dx++)
             {
                 sx = xofs[dx];
+                short a0 = ialphap[0];
+                short a1 = ialphap[1];
 
                 const unsigned char* S1p = S1 + sx;
                 __m128i _S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 3), *(S1p + 2), *(S1p + 1), *(S1p));
-                __m128i zeros = _mm_setzero_si128();
+                __m128i zeroes = _mm_setzero_si128();
                 __m128i _a0a1 = _mm_set_epi16(0, 0, 0, 0, a1, a1, a0, a0);
-                __m128i _S116 = _mm_unpacklo_epi8(_S1, zeros);
+                __m128i _S116 = _mm_unpacklo_epi8(_S1, zeroes);
                 // multiply and shift code
                 __m128i _S1ma0a1_0 = _mm_mullo_epi16(_S116, _a0a1);
                 __m128i _S1ma0a1_1 = _mm_mulhi_epi16(_S116, _a0a1);
                 __m128i _S1ma0a1 = _mm_unpacklo_epi16(_S1ma0a1_0, _S1ma0a1_1);
-                __m128i _S1ma0a1_02 = _mm_unpacklo_epi64(_S1ma0a1, zeros);
-                __m128i _S1ma0a1_13 = _mm_unpackhi_epi64(_S1ma0a1, zeros);
+                __m128i _S1ma0a1_02 = _mm_unpacklo_epi64(_S1ma0a1, zeroes);
+                __m128i _S1ma0a1_13 = _mm_unpackhi_epi64(_S1ma0a1, zeroes);
                 __m128i _S1ma0a1_add = _mm_add_epi32(_S1ma0a1_0,2 _S1ma0a1_13);
                 __m128i _rows1_sr4 = _mm_srli_epi32(_S1ma0a1_add, 4);
                 // store code
@@ -472,26 +474,32 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 const unsigned char* S0p = S0 + sx;
                 const unsigned char* S1p = S1 + sx;
 
-                __m128i _a0a0 = _mm_set_epi32(0, (int)a0, 0, (int)a0);
-                __m128i _a1a1 = _mm_set_epi32(0, (int)a1, 0, (int)a1);
-                __m128i _S0_0 = _mm_set_epi32(0, (int)(*(S0p+1)), 0, (int)(*S0p));
-                __m128i _S0_1 = _mm_set_epi32(0, (int)(*(S0p+3)), 0, (int)(*(S0p+2)));
-                __m128i _S1_0 = _mm_set_epi32(0, (int)(*(S1p+1)), 0, (int)(*S1p));
-                __m128i _S1_1 = _mm_set_epi32(0, (int)(*(S1p+3)), 0, (int)(*(S1p+2)));
+                __m128i _S0S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 3), *(S1p + 2), *(S1p + 1), *(S1p), *(S0p + 3), *(S1p + 2), *(S0p + 1), *(S0p));
+                __m128i zeroes = _mm_setzero_si128();
+                __m128i _a0a1 = _mm_set_epi16(a1, a1, a0, a0, a1, a1, a0, a0);
+                __m128i _S0S116 = _mm_unpacklo_epi8(_S0S1, zeroes);
 
-                // multiply and shift code
-                __m128i _S0ma0a1 = _mm_add_epi32(_mm_mul_epu32(_S0_0, _a0a0), _mm_mul_epu32(_S0_1, _a1a1));
-                __m128i _S1ma0a1 = _mm_add_epi32(_mm_mul_epu32(_S1_0, _a0a0), _mm_mul_epu32(_S1_1, _a1a1));
-                __m128i _rows0_sr4 = _mm_srli_epi32(_S0ma0a1, 4);
-                __m128i _rows1_sr4 = _mm_srli_epi32(_S1ma0a1, 4);
+                __m128i _S0S1ma0a1_0 = _mm_mullo_epi16(_S0S116, _a0a1);
+                __m128i _S0S1ma0a1_1 = _mm_mulhi_epi16(_S0S116, _a0a1);
+                __m128i _S0ma0a1 = _mm_unpacklo_epi16(_S0S1ma0a1_0, _S0S1ma0a1_1);
+                __m128i _S1ma0a1 = _mm_unpackhi_epi16(_S0S1ma0a1_0, _S0S1ma0a1_1);
+                __m128i _S0ma0a1_01 = _mm_unpacklo_epi64(_S0ma0a1, zeroes);
+                __m128i _S0ma0a1_23 = _mm_unpackhi_epi64(_S0ma0a1, zeroes);
+                __m128i _S1ma0a1_01 = _mm_unpacklo_epi64(_S1ma0a1, zeroes);
+                __m128i _S1ma0a1_23 = _mm_unpackhi_epi64(_S1ma0a1, zeroes);
+                __m128i _S0ma0a1_add = _mm_add_epi32(_S0ma0a1_01, _S0ma0a1_23);
+                __m128i _S1ma0a1_add = _mm_add_epi32(_S1ma0a1_01, _S0ma0a1_23);
+
+                __m128i _rows0_sr4 = _mm_srli_epi32(_S0ma0a1_add, 4);
+                __m128i _rows1_sr4 = _mm_srli_epi32(_S1ma0a1_add, 4);
 
                 // store code
                 int* temp0_sr4 = (int*)&_rows0_sr4;
                 int* temp1_sr4 = (int*)&_rows1_sr4;
                 rows0p[0] = (short)(*(temp0_sr4));
-                rows0p[1] = (short)(*(temp0_sr4+2));
+                rows0p[1] = (short)(*(temp0_sr4+1));
                 rows1p[0] = (short)(*(temp1_sr4));
-                rows1p[1] = (short)(*(temp1_sr4+2));
+                rows1p[1] = (short)(*(temp1_sr4+1));
 
                 ialphap += 2;
                 rows0p += 2;
