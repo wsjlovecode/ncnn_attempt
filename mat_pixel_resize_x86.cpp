@@ -474,7 +474,7 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 const unsigned char* S0p = S0 + sx;
                 const unsigned char* S1p = S1 + sx;
 
-                __m128i _S0S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 3), *(S1p + 2), *(S1p + 1), *(S1p), *(S0p + 3), *(S1p + 2), *(S0p + 1), *(S0p));
+                __m128i _S0S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 3), *(S1p + 2), *(S1p + 1), *(S1p), *(S0p + 3), *(S0p + 2), *(S0p + 1), *(S0p));
                 __m128i zeroes = _mm_setzero_si128();
                 __m128i _a0a1 = _mm_set_epi16(a1, a1, a0, a0, a1, a1, a0, a0);
                 __m128i _S0S116 = _mm_unpacklo_epi8(_S0S1, zeroes);
@@ -488,7 +488,7 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 __m128i _S1ma0a1_01 = _mm_unpacklo_epi64(_S1ma0a1, zeroes);
                 __m128i _S1ma0a1_23 = _mm_unpackhi_epi64(_S1ma0a1, zeroes);
                 __m128i _S0ma0a1_add = _mm_add_epi32(_S0ma0a1_01, _S0ma0a1_23);
-                __m128i _S1ma0a1_add = _mm_add_epi32(_S1ma0a1_01, _S0ma0a1_23);
+                __m128i _S1ma0a1_add = _mm_add_epi32(_S1ma0a1_01, _S1ma0a1_23);
 
                 __m128i _rows0_sr4 = _mm_srli_epi32(_S0ma0a1_add, 4);
                 __m128i _rows1_sr4 = _mm_srli_epi32(_S1ma0a1_add, 4);
@@ -683,10 +683,12 @@ void resize_bilinear_c3(const unsigned char* src, int srcw, int srch, int srcstr
 
                 const unsigned char* S1p = S1 + sx;
                 
-                __m128i _S1 = _mm_set_epi16(0, 0, *(S1p+5), *(S1p+2), *(S1p+4), *(S1p+1), *(S1p+3), *(S1p));
+                __m128i _S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 5), *(S1p + 2), *(S1p + 4), *(S1p + 1), *(S1p + 3), *(S1p));
+                __m128i zeroes = _mm_setzero_si128();
                 __m128i _a0a1 = _mm_set_epi16(0, 0, a1, a0, a1, a0, a1, a0);
+                __m128i _S116 = _mm_unpacklo_epi8(_S1, zeroes);
 
-                __m128i _rows1 = _mm_madd_epi16(_S1, _a0a1);
+                __m128i _rows1 = _mm_madd_epi16(_S116, _a0a1);
                 __m128i _rows1_sr4 = _mm_srli_epi32(_rows1, 4);
 
                 int* temp_sr4 = (int*)&_rows1_sr4;
@@ -700,7 +702,7 @@ void resize_bilinear_c3(const unsigned char* src, int srcw, int srch, int srcstr
         }
         else
         {
-            // hresize two rows
+             // hresize two rows
             const unsigned char* S0 = src + srcstride * (sy);
             const unsigned char* S1 = src + srcstride * (sy + 1);
 
@@ -716,12 +718,14 @@ void resize_bilinear_c3(const unsigned char* src, int srcw, int srch, int srcstr
                 const unsigned char* S0p = S0 + sx;
                 const unsigned char* S1p = S1 + sx;
 
-                __m128i _S0 = _mm_set_epi16(0, 0, *(S0p+5), *(S0p+2), *(S0p+4), *(S0p+1), *(S0p+3), *(S0p));
-                __m128i _S1 = _mm_set_epi16(0, 0, *(S1p+5), *(S1p+2), *(S1p+4), *(S1p+1), *(S1p+3), *(S1p));
+                __m128i _S0S1 = _mm_set_epi8(0, 0, *(S1p + 5), *(S1p + 2), *(S1p + 4), *(S1p + 1), *(S1p + 3), *(S1p), 0, 0, *(S0p + 5), *(S0p + 2), *(S0p + 4), *(S0p + 1), *(S0p + 3), *(S0p));
+                __m128i zeroes = _mm_setzero_si128();
                 __m128i _a0a1 = _mm_set_epi16(0, 0, a1, a0, a1, a0, a1, a0);
+                __m128i _S016 = _mm_unpacklo_epi8(_S0S1, zeroes);
+                __m128i _S116 = _mm_unpackhi_epi8(_S0S1, zeroes);
 
-                __m128i _rows0 = _mm_madd_epi16(_S0, _a0a1);
-                __m128i _rows1 = _mm_madd_epi16(_S1, _a0a1);
+                __m128i _rows0 = _mm_madd_epi16(_S016, _a0a1);
+                __m128i _rows1 = _mm_madd_epi16(_S116, _a0a1);
                 __m128i _rows0_sr4 = _mm_srli_epi32(_rows0, 4);
                 __m128i _rows1_sr4 = _mm_srli_epi32(_rows1, 4);
 
