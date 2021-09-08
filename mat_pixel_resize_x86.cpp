@@ -921,10 +921,11 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
                 const unsigned char* S1p = S1 + sx;
 
                 __m128i _a0a1 = _mm_set_epi16(a1, a0, a1, a0, a1, a0, a1, a0);
-                __m128i _S1 = _mm_set_epi16((short)*(S1p + 7), (short)*(S1p + 3), (short)*(S1p + 6), (short)*(S1p + 2), 
-                                            (short)*(S1p + 5), (short)*(S1p + 1), (short)*(S1p + 4), (short)*(S1p));
+                __m128i _S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 7), *(S1p + 3), *(S1p + 6), *(S1p + 2), *(S1p + 5), *(S1p + 1), *(S1p + 4), *(S1p));
+                __m128i zeroes = _mm_setzero_si128();
+                __m128i _S116 = _mm_unpacklo_epi8(_S1, zeroes);
                 
-                __m128i _rows1 = _mm_madd_epi16(_S1, _a0a1);
+                __m128i _rows1 = _mm_madd_epi16(_S116, _a0a1);
                 __m128i _rows1_sr4 = _mm_srli_epi32(_rows1, 4);
 
                 int* temp_sr4 = (int*)&_rows1_sr4;
@@ -957,13 +958,14 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
                 const unsigned char* S1p = S1 + sx;
 
                 __m128i _a0a1 = _mm_set_epi16(a1, a0, a1, a0, a1, a0, a1, a0);
-                __m128i _S0 = _mm_set_epi16((short)*(S0p + 7), (short)*(S0p + 3), (short)*(S0p + 6), (short)*(S0p + 2),
-                                            (short)*(S0p + 5), (short)*(S0p + 1), (short)*(S0p + 4), (short)*(S0p));
-                __m128i _S1 = _mm_set_epi16((short)*(S1p + 7), (short)*(S1p + 3), (short)*(S1p + 6), (short)*(S1p + 2),
-                                            (short)*(S1p + 5), (short)*(S1p + 1), (short)*(S1p + 4), (short)*(S1p));
+                __m128i _S0S1 = _mm_set_epi8(*(S1p + 7), *(S1p + 3), *(S1p + 6), *(S1p + 2), *(S1p + 5), *(S1p + 1), *(S1p + 4), *(S1p),
+                                             *(S0p + 7), *(S0p + 3), *(S0p + 6), *(S0p + 2), *(S0p + 5), *(S0p + 1), *(S0p + 4), *(S0p));
+                __m128i zeroes = _mm_setzero_si128();
+                __m128i _S016 = _mm_unpacklo_epi8(_S0S1, zeroes);
+                __m128i _S116 = _mm_unpackhi_epi8(_S0S1, zeroes);
 
-                __m128i _rows0 = _mm_madd_epi16(_S0, _a0a1);
-                __m128i _rows1 = _mm_madd_epi16(_S1, _a0a1);
+                __m128i _rows0 = _mm_madd_epi16(_S016, _a0a1);
+                __m128i _rows1 = _mm_madd_epi16(_S116, _a0a1);
                 __m128i _rows0_sr4 = _mm_srli_epi32(_rows0, 4);
                 __m128i _rows1_sr4 = _mm_srli_epi32(_rows1, 4);
 
