@@ -14,8 +14,11 @@
 
 #include "mat.h"
 
+#include <cstdlib>
+#include <cstdio>
 #include <limits.h>
 #include <math.h>
+#include <x86intrin.h>
 #if __ARM_NEON
 #include <arm_neon.h>
 #endif // __ARM_NEON
@@ -196,10 +199,14 @@ void resize_bilinear_c1(const unsigned char* src, int srcw, int srch, int srcstr
 
 #if __ARM_NEON
         int nn = w >> 3;
-        int remain = w - (nn << 3);
+	int remain = w - (nn << 3);
+#elif __SSE2__
+        // int nn = 0;
+	int nn = w >> 2;
+	int remain = w - (nn << 2);
 #else
-        int nn = w >> 2;
-        int remain = w - (nn << 2);
+	int nn = 0;
+	int remain = w - (nn << 3);
 #endif
 
 #if __ARM_NEON
@@ -286,8 +293,9 @@ void resize_bilinear_c1(const unsigned char* src, int srcw, int srch, int srcstr
                 : "cc", "memory", "r4", "q0", "q1", "q2", "q3", "q8", "q9", "q10", "q11", "q12");
         }
 #endif // __aarch64__
-#else  
-        __m128i _b0b1 = _mm_set_epi16(b1, b1, b1, b1, b0, b0, b0, b0);
+#endif // __ARM_NEON
+#if __SSE2__
+	__m128i _b0b1 = _mm_set_epi16(b1, b1, b1, b1, b0, b0, b0, b0);
         __m128i _zeros = _mm_setzero_si128();
         __m128i _b0 = _mm_unpacklo_epi16(_b0b1, _zeros);
         __m128i _b1 = _mm_unpackhi_epi16(_b0b1, _zeros);       
@@ -332,7 +340,8 @@ void resize_bilinear_c1(const unsigned char* src, int srcw, int srch, int srcstr
             rows0p += 4;
             rows1p += 4;
         }
-#endif // __ARM_NEON
+#endif // __SSE2__
+
         for (; remain; --remain)
         {
             //             D[x] = (rows0[x]*b0 + rows1[x]*b1) >> INTER_RESIZE_COEF_BITS;
@@ -471,11 +480,10 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 int32x4_t _rows1 = vcombine_s32(_rows1low, vget_high_s32(_S1ma0a1));
                 int16x4_t _rows1_sr4 = vshrn_n_s32(_rows1, 4);
                 vst1_s16(rows1p, _rows1_sr4);
-#else
-                short a0 = ialphap[0];
+#elif __SSE2__
+		short a0 = ialphap[0];
                 short a1 = ialphap[1];
-                
-                __m128i _S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 3), *(S1p + 2), *(S1p + 1), *(S1p));
+		__m128i _S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 3), *(S1p + 2), *(S1p + 1), *(S1p));
                 __m128i zeroes = _mm_setzero_si128();
                 __m128i _a0a1 = _mm_set_epi16(0, 0, 0, 0, a1, a1, a0, a0);
                 __m128i _S116 = _mm_unpacklo_epi8(_S1, zeroes);
@@ -491,7 +499,12 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 int* temp_sr4 = (int*)&_rows1_sr4;
                 rows1p[0] = (short)(*(temp_sr4));
                 rows1p[1] = (short)(*(temp_sr4+1));
-            }
+#else
+                short a0 = ialphap[0];
+                short a1 = ialphap[1];
+
+                rows1p[0] = (S1p[0] * a0 + S1p[2] * a1) >> 4;
+                rows1p[1] = (S1p[1] * a0 + S1p[3] * a1) >> 4;
 #endif // __ARM_NEON
 
                 ialphap += 2;
@@ -542,8 +555,8 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 int16x4_t _rows1_sr4 = vext_s16(_rows01_sr4, _rows01_sr4, 2);
                 vst1_s16(rows0p, _rows01_sr4);
                 vst1_s16(rows1p, _rows1_sr4);
-#else
-                __m128i _S0S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 3), *(S1p + 2), *(S1p + 1), *(S1p), *(S0p + 3), *(S0p + 2), *(S0p + 1), *(S0p));
+#elif __SSE2__
+		__m128i _S0S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 3), *(S1p + 2), *(S1p + 1), *(S1p), *(S0p + 3), *(S0p + 2), *(S0p + 1), *(S0p));
                 __m128i zeroes = _mm_setzero_si128();
                 __m128i _a0a1 = _mm_set_epi16(a1, a1, a0, a0, a1, a1, a0, a0);
                 __m128i _S0S116 = _mm_unpacklo_epi8(_S0S1, zeroes);
@@ -569,6 +582,11 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 rows0p[1] = (short)(*(temp0_sr4+1));
                 rows1p[0] = (short)(*(temp1_sr4));
                 rows1p[1] = (short)(*(temp1_sr4+1));
+#else
+                rows0p[0] = (S0p[0] * a0 + S0p[2] * a1) >> 4;
+                rows0p[1] = (S0p[1] * a0 + S0p[3] * a1) >> 4;
+                rows1p[0] = (S1p[0] * a0 + S1p[2] * a1) >> 4;
+                rows1p[1] = (S1p[1] * a0 + S1p[3] * a1) >> 4;
 #endif // __ARM_NEON
 
                 ialphap += 2;
@@ -589,10 +607,13 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
 
 #if __ARM_NEON
         int nn = (w * 2) >> 3;
-        int remain = (w * 2) - (nn << 3);
+	int remain = (w * 2) - (nn << 3);
+#elif __SSE2__
+	int nn = (w * 2) >> 2;
+	int remain = (w * 2) - (nn << 2);
 #else
-        int nn = (w * 2) >> 2;
-        int remain = (w * 2) - (nn << 2);
+	int nn = 0;
+	int remain = (w * 2) - (nn << 3);
 #endif
 
 #if __ARM_NEON
@@ -679,8 +700,9 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
                 : "cc", "memory", "r4", "q0", "q1", "q2", "q3", "q8", "q9", "q10", "q11", "q12");
         }
 #endif // __aarch64__
-#else
-        __m128i _b0b1 = _mm_set_epi16(b1, b1, b1, b1, b0, b0, b0, b0);
+#endif // __ARM_NEON
+#if __SSE2__
+	__m128i _b0b1 = _mm_set_epi16(b1, b1, b1, b1, b0, b0, b0, b0);
         __m128i _zeros = _mm_setzero_si128();
         __m128i _b0 = _mm_unpacklo_epi16(_b0b1, _zeros);
         __m128i _b1 = _mm_unpackhi_epi16(_b0b1, _zeros);       
@@ -725,7 +747,7 @@ void resize_bilinear_c2(const unsigned char* src, int srcw, int srch, int srcstr
             rows0p += 4;
             rows1p += 4;
         }
-#endif // __ARM_NEON
+#endif // __SSE2__
         for (; remain; --remain)
         {
             //             D[x] = (rows0[x]*b0 + rows1[x]*b1) >> INTER_RESIZE_COEF_BITS;
@@ -868,8 +890,8 @@ void resize_bilinear_c3(const unsigned char* src, int srcw, int srch, int srcstr
                 _rows1 = vmlal_s16(_rows1, _S1high, _a1);
                 int16x4_t _rows1_sr4 = vshrn_n_s32(_rows1, 4);
                 vst1_s16(rows1p, _rows1_sr4);
-#else
-               __m128i _S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 5), *(S1p + 2), *(S1p + 4), *(S1p + 1), *(S1p + 3), *(S1p));
+#elif __SSE2__
+		__m128i _S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 5), *(S1p + 2), *(S1p + 4), *(S1p + 1), *(S1p + 3), *(S1p));
 		__m128i zeroes = _mm_setzero_si128();
                 __m128i _a0a1 = _mm_set_epi16(0, 0, a1, a0, a1, a0, a1, a0);
 		__m128i _S116 = _mm_unpacklo_epi8(_S1, zeroes);
@@ -881,6 +903,10 @@ void resize_bilinear_c3(const unsigned char* src, int srcw, int srch, int srcstr
                 rows1p[0] = (short)*(temp_sr4);
                 rows1p[1] = (short)*(temp_sr4+1);
                 rows1p[2] = (short)*(temp_sr4+2);
+#else
+                rows1p[0] = (S1p[0] * a0 + S1p[3] * a1) >> 4;
+                rows1p[1] = (S1p[1] * a0 + S1p[4] * a1) >> 4;
+                rows1p[2] = (S1p[2] * a0 + S1p[5] * a1) >> 4;
 #endif // __ARM_NEON
 
                 ialphap += 2;
@@ -938,8 +964,8 @@ void resize_bilinear_c3(const unsigned char* src, int srcw, int srch, int srcstr
                 int16x4_t _rows1_sr4 = vshrn_n_s32(_rows1, 4);
                 vst1_s16(rows0p, _rows0_sr4);
                 vst1_s16(rows1p, _rows1_sr4);
-#else
-                __m128i _S0S1 = _mm_set_epi8(0, 0, *(S1p + 5), *(S1p + 2), *(S1p + 4), *(S1p + 1), *(S1p + 3), *(S1p), 0, 0, *(S0p + 5), *(S0p + 2), *(S0p + 4), *(S0p + 1), *(S0p + 3), *(S0p));
+#elif __SSE2__
+		__m128i _S0S1 = _mm_set_epi8(0, 0, *(S1p + 5), *(S1p + 2), *(S1p + 4), *(S1p + 1), *(S1p + 3), *(S1p), 0, 0, *(S0p + 5), *(S0p + 2), *(S0p + 4), *(S0p + 1), *(S0p + 3), *(S0p));
 		__m128i zeroes = _mm_setzero_si128();
                 __m128i _a0a1 = _mm_set_epi16(0, 0, a1, a0, a1, a0, a1, a0);
 		__m128i _S016 = _mm_unpacklo_epi8(_S0S1, zeroes);
@@ -958,6 +984,13 @@ void resize_bilinear_c3(const unsigned char* src, int srcw, int srch, int srcstr
                 rows1p[1] = (short)*(temp1_sr4+1);
                 rows0p[2] = (short)*(temp0_sr4+2);
                 rows1p[2] = (short)*(temp1_sr4+2);
+#else
+                rows0p[0] = (S0p[0] * a0 + S0p[3] * a1) >> 4;
+                rows0p[1] = (S0p[1] * a0 + S0p[4] * a1) >> 4;
+                rows0p[2] = (S0p[2] * a0 + S0p[5] * a1) >> 4;
+                rows1p[0] = (S1p[0] * a0 + S1p[3] * a1) >> 4;
+                rows1p[1] = (S1p[1] * a0 + S1p[4] * a1) >> 4;
+                rows1p[2] = (S1p[2] * a0 + S1p[5] * a1) >> 4;
 #endif // __ARM_NEON
 
                 ialphap += 2;
@@ -978,10 +1011,13 @@ void resize_bilinear_c3(const unsigned char* src, int srcw, int srch, int srcstr
 
 #if __ARM_NEON
         int nn = (w * 3) >> 3;
-        int remain = (w * 3) - (nn << 3);
+	int remain = (w * 3) - (nn << 3);
+#elif __SSE2__
+	int nn = (w * 3) >> 2;
+	int remain = (w * 3) - (nn << 2);
 #else
-        int nn = (w * 3) >> 2;
-        int remain = (w * 3) - (nn << 2);
+	int nn = 0;
+	int remain = (w * 3) - (nn << 3);
 #endif
 
 #if __ARM_NEON
@@ -1068,8 +1104,9 @@ void resize_bilinear_c3(const unsigned char* src, int srcw, int srch, int srcstr
                 : "cc", "memory", "r4", "q0", "q1", "q2", "q3", "q8", "q9", "q10", "q11", "q12");
         }
 #endif // __aarch64__
-#else
-        __m128i _b0b1 = _mm_set_epi16(b1, b1, b1, b1, b0, b0, b0, b0);
+#endif // __ARM_NEON
+#if __SSE2__
+	__m128i _b0b1 = _mm_set_epi16(b1, b1, b1, b1, b0, b0, b0, b0);
         __m128i _zeros = _mm_setzero_si128();
         __m128i _b0 = _mm_unpacklo_epi16(_b0b1, _zeros);
         __m128i _b1 = _mm_unpackhi_epi16(_b0b1, _zeros);       
@@ -1114,7 +1151,7 @@ void resize_bilinear_c3(const unsigned char* src, int srcw, int srch, int srcstr
             rows0p += 4;
             rows1p += 4;
         }
-#endif // __ARM_NEON
+#endif // __SSE2__
         for (; remain; --remain)
         {
             //             D[x] = (rows0[x]*b0 + rows1[x]*b1) >> INTER_RESIZE_COEF_BITS;
@@ -1249,8 +1286,8 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
                 _rows1 = vmlal_s16(_rows1, _S1high, _a1);
                 int16x4_t _rows1_sr4 = vshrn_n_s32(_rows1, 4);
                 vst1_s16(rows1p, _rows1_sr4);
-#else
-                __m128i _a0a1 = _mm_set_epi16(a1, a0, a1, a0, a1, a0, a1, a0);
+#elif __SSE2__
+		__m128i _a0a1 = _mm_set_epi16(a1, a0, a1, a0, a1, a0, a1, a0);
                 __m128i _S1 = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, *(S1p + 7), *(S1p + 3), *(S1p + 6), *(S1p + 2), *(S1p + 5), *(S1p + 1), *(S1p + 4), *(S1p));
 		__m128i zeroes = _mm_setzero_si128();
 		__m128i _S116 = _mm_unpacklo_epi8(_S1, zeroes);
@@ -1263,6 +1300,11 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
                 rows1p[1] = (short)*(temp_sr4+1);
                 rows1p[2] = (short)*(temp_sr4+2);
                 rows1p[3] = (short)*(temp_sr4+3);
+#else
+                rows1p[0] = (S1p[0] * a0 + S1p[4] * a1) >> 4;
+                rows1p[1] = (S1p[1] * a0 + S1p[5] * a1) >> 4;
+                rows1p[2] = (S1p[2] * a0 + S1p[6] * a1) >> 4;
+                rows1p[3] = (S1p[3] * a0 + S1p[7] * a1) >> 4;
 #endif // __ARM_NEON
 
                 ialphap += 2;
@@ -1305,8 +1347,8 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
                 int16x4_t _rows1_sr4 = vshrn_n_s32(_rows1, 4);
                 vst1_s16(rows0p, _rows0_sr4);
                 vst1_s16(rows1p, _rows1_sr4);
-#else
-                __m128i _a0a1 = _mm_set_epi16(a1, a0, a1, a0, a1, a0, a1, a0);
+#elif __SSE2__
+		__m128i _a0a1 = _mm_set_epi16(a1, a0, a1, a0, a1, a0, a1, a0);
                 __m128i _S0S1 = _mm_set_epi8(*(S1p + 7), *(S1p + 3), *(S1p + 6), *(S1p + 2), *(S1p + 5), *(S1p + 1), *(S1p + 4), *(S1p),
 					     *(S0p + 7), *(S0p + 3), *(S0p + 6), *(S0p + 2), *(S0p + 5), *(S0p + 1), *(S0p + 4), *(S0p));
 		__m128i zeroes = _mm_setzero_si128();
@@ -1328,6 +1370,15 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
                 rows1p[2] = (short)*(temp1_sr4 + 2);
                 rows0p[3] = (short)*(temp0_sr4 + 3);
                 rows1p[3] = (short)*(temp1_sr4 + 3);
+#else
+                rows0p[0] = (S0p[0] * a0 + S0p[4] * a1) >> 4;
+                rows0p[1] = (S0p[1] * a0 + S0p[5] * a1) >> 4;
+                rows0p[2] = (S0p[2] * a0 + S0p[6] * a1) >> 4;
+                rows0p[3] = (S0p[3] * a0 + S0p[7] * a1) >> 4;
+                rows1p[0] = (S1p[0] * a0 + S1p[4] * a1) >> 4;
+                rows1p[1] = (S1p[1] * a0 + S1p[5] * a1) >> 4;
+                rows1p[2] = (S1p[2] * a0 + S1p[6] * a1) >> 4;
+                rows1p[3] = (S1p[3] * a0 + S1p[7] * a1) >> 4;
 #endif // __ARM_NEON
 
                 ialphap += 2;
@@ -1348,11 +1399,14 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
 
 #if __ARM_NEON
         int nn = (w * 4) >> 3;
-        int remain = (w * 4) - (nn << 3);
+	int remain = (w * 4) - (nn << 3);
+#elif __SSE2__
+	int nn = (w * 4) >> 2;
+	int remain = (w * 4) - (nn << 2);
 #else
-        int nn = (w * 4) >> 2;
-        int remain = (w * 4) - (nn << 2);
-#endif    
+	int nn = 0;
+	int remain = (w * 4) - (nn << 3);
+#endif
 
 #if __ARM_NEON
 #if __aarch64__
@@ -1438,8 +1492,9 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
                 : "cc", "memory", "r4", "q0", "q1", "q2", "q3", "q8", "q9", "q10", "q11", "q12");
         }
 #endif // __aarch64__
-#else  
-        __m128i _b0b1 = _mm_set_epi16(b1, b1, b1, b1, b0, b0, b0, b0);
+#endif // __ARM_NEON
+#if __SSE2__
+	__m128i _b0b1 = _mm_set_epi16(b1, b1, b1, b1, b0, b0, b0, b0);
         __m128i _zeros = _mm_setzero_si128();
         __m128i _b0 = _mm_unpacklo_epi16(_b0b1, _zeros);
         __m128i _b1 = _mm_unpackhi_epi16(_b0b1, _zeros);       
@@ -1484,7 +1539,7 @@ void resize_bilinear_c4(const unsigned char* src, int srcw, int srch, int srcstr
             rows0p += 4;
             rows1p += 4;
         }
-#endif // __ARM_NEON
+#endif // __SSE2__
         for (; remain; --remain)
         {
             //             D[x] = (rows0[x]*b0 + rows1[x]*b1) >> INTER_RESIZE_COEF_BITS;
